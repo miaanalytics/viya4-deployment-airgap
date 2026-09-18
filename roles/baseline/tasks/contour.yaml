@@ -248,3 +248,41 @@
     kubeconfig: "{{ KUBECONFIG }}"  # Kubeconfig for cluster access
   tags:
     - uninstall
+
+
+# Download the Contour Helm chart for offline installation scenarios
+- name: Download Contour Helm chart for offline installation
+  kubernetes.core.helm_pull:
+    chart_ref: {{ CONTOUR_CHART_NAME}}
+    repo_url: {{ CONTOUR_CHART_URL }}
+    chart_version: "{{ CONTOUR_CHART_VERSION }}"
+    destination: /tmp/helm-charts
+    untar_chart: false
+  tags:
+    - download
+
+- name: Pull Multiple Docker Images in a Loop
+  hosts: all
+  become: yes
+  vars:
+    docker_images:
+      - name: ghcr.io/projectcontour/contour
+        tag: v1.33.5
+      - name: docker.io/envoyproxy/envoy
+        tag: v1.35.10
+  tasks:
+    - name: Pull Docker images for offline installation
+      community.docker.docker_image:
+        name: "{{ item.name }}"
+        tag: "{{ item.tag }}"
+        source: pull
+      loop: "{{ docker_images }}"
+    tags:
+    - download
+
+# Upload the Contour Helm chart to ECR
+# - name: Upload Helm chart to OCI container registry
+#   ansible.builtin.command: >
+#     helm push '/opt/sas/downloads/helm-charts/contour.tgz' oci://855334947981.dkr.ecr.il-central-1.amazonaws.com/sas/baseline/contour
+#   tags:
+#     - upload

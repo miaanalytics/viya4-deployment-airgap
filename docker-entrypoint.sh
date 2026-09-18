@@ -5,6 +5,24 @@
 
 set -e
 
+# AWS specific
+# Authenticate Helm to AWS ECR
+# When running this image mount the ".aws" folder to it for this to work
+# --volume ~/.aws:/viya4-deployment/.aws --env-file=./aws_creds.env 
+#
+if [ -d "/viya4-deployment/.aws" ]; then
+   # export _profile=$(aws configure list-profiles)
+   # echo $_profile
+   echo "Authenticating Helm to AWS"
+   export _region=$(aws configure get region)
+   echo "AWS Region: $_region"
+   export _accountID=$(aws sts get-caller-identity | jq -r '.Account')
+   echo "AWS AccountID: $_accountID"
+   aws ecr get-login-password | helm registry login --username AWS --password-stdin ${_accountID}.dkr.ecr.${_region}.amazonaws.com
+   chmod 770 /viya4-deployment/.config -R
+   # source /viya4-deployment/.aws/sas_viya4_deployment_userexit.sh
+fi
+
 # setup container user
 echo "viya4-deployment:*:$(id -u):$(id -g):,,,:/viya4-deployment:/bin/bash" >> /etc/passwd
 echo "viya4-deployment:*:$(id -G | cut -d' ' -f 2)" >> /etc/group
